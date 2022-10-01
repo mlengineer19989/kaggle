@@ -1,1 +1,6 @@
 # kaggle
+
+data
+
+*.csv
+*.txt
