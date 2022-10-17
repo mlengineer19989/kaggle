@@ -152,7 +152,12 @@ def preprocess_selfmade(train, test_data, y_test):
     X_train = X_total[:train_size]
     X_test = X_total[train_size:train_size+test_size]
 
-    return X_train, y_train, X_test, y_test
+    X_train, X_valid, y_train, y_valid = train_test_split(X_train, y_train,
+                                                                    train_size=0.8,
+                                                                    test_size=0.2,
+                                                                    random_state=0)
+
+    return X_train, y_train, X_valid, y_valid, X_test, y_test
 
 
 
