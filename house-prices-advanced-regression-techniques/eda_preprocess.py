@@ -9,6 +9,10 @@ import matplotlib.pyplot as plt
 from scipy.stats import norm
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error, r2_score
+
+import torch
+
 from scipy import stats
 
 from scipy.cluster.hierarchy import linkage
@@ -224,3 +228,62 @@ def missing_data_analysis(data):
     percent = (data.isnull().sum()/data.isnull().count()).sort_values(ascending=False)
     missing_data = pd.concat([total, percent], axis=1, keys=['Total', 'Percent'])
     return missing_data
+
+
+def calc_score(y_true, y_pred):
+    MSE = mean_squared_error(y_true, y_pred)
+    r2 = r2_score(y_true, y_pred)
+    return MSE, r2
+
+def lin_regplot(y, y_pred):
+    plt.scatter(y, y_pred, c="steelblue", edgecolors="white", s=70)
+    plt.plot(y, y, color="black", lw=2)
+    plt.xlabel("y_true")
+    plt.ylabel("y_predict")
+
+class evaluation_show():
+    def __init__(self, X_train, y_train, X_test, y_test, model) -> None:
+        self.X_train = X_train
+        self.X_test = X_test
+        self.y_train = y_train
+        self.y_test = y_test
+
+        self.model = model
+
+    def predict_with_model(self, X):
+        return self.model.predict(X)
+
+    def predict_train_and_test(self):
+        self.y_pred_train = self.predict_with_model(self.X_train)
+        self.y_pred_test = self.predict_with_model(self.X_test)
+        
+    def show_result(self):
+        self.predict_train_and_test()
+        MSE_train, r2_train = calc_score(self.y_train, self.y_pred_train)
+        MSE_test, r2_test = calc_score(self.y_test, self.y_pred_test)
+
+        print("MSE_train={0}, r2_train={1}".format(MSE_train, r2_train))
+        print("MSE_test={0}, r2_test={1}".format(MSE_test, r2_test))
+
+        lin_regplot(self.y_train, self.y_pred_train)
+        plt.title("predict of train data")
+        plt.show()
+
+        lin_regplot(self.y_test, self.y_pred_test)
+        plt.title("predict of test data")
+        plt.show()
+
+class evaluation_show_pytorch(evaluation_show):
+    def predict_with_model(self, X):
+        self.model.eval()
+        X_valid_for_torch = torch.from_numpy(X.values).float()
+        with torch.no_grad():
+            y_pred_tensor = self.model(X_valid_for_torch)
+
+        y_pred = y_pred_tensor.data.numpy()
+        y_pred = pd.Series(data=y_pred.squeeze())
+
+        return y_pred
+
+
+
