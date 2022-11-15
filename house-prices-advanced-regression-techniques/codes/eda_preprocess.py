@@ -18,6 +18,15 @@ from scipy import stats
 from scipy.cluster.hierarchy import linkage
 from scipy.spatial.distance import squareform
 
+from hyperopt import hp
+from keras.callbacks import EarlyStopping
+from keras.layers import ReLU, PReLU
+from keras.layers.core import Dense, Dropout
+from keras.layers import BatchNormalization
+from keras.models import Sequential
+from keras.optimizers import SGD, Adam
+from sklearn.preprocessing import StandardScaler
+
 def preprocess_for_xgb(train, test):
     """以下のサイトで実装されている勾配ブースティング決定木用の前処理
     https://www.kaggle.com/code/anandhuh/house-price-prediction-simple-solution-top-3
@@ -285,5 +294,93 @@ class evaluation_show_pytorch(evaluation_show):
 
         return y_pred
 
+class MLP():
+
+    def __init__(self, params):
+        self.params = params
+        self.scaler = None
+        self.model = None
+    
+    
+    def fit(self, tr_x, tr_y, va_x, va_y):
+
+        # パラメータ
+        input_dropout = self.params['input_dropout']
+        hidden_layers = int(self.params['hidden_layers'])
+        hidden_units = int(self.params['hidden_units'])
+        hidden_activation = self.params['hidden_activation']
+        hidden_dropout = self.params['hidden_dropout']
+        batch_norm = self.params['batch_norm']
+        optimizer_type = self.params['optimizer']['type']
+        optimizer_lr = self.params['optimizer']['lr']
+        batch_size = int(self.params['batch_size'])
+
+        # 標準化
+        self.scaler = StandardScaler()
+        tr_x = self.scaler.fit_transform(tr_x)
+        va_x = self.scaler.transform(va_x)
+
+        self.model = Sequential()
+
+        # 入力層
+        self.model.add(Dropout(input_dropout, input_shape=(tr_x.shape[1],)))
+
+        # 中間層
+        for i in range(hidden_layers):
+            self.model.add(Dense(hidden_units))
+            if batch_norm == 'before_act':
+                self.model.add(BatchNormalization())
+            if hidden_activation == 'prelu':
+                self.model.add(PReLU())
+            elif hidden_activation == 'relu':
+                self.model.add(ReLU())
+            else:
+                raise NotImplementedError
+            self.model.add(Dropout(hidden_dropout))
+
+        # 出力層
+        self.model.add(Dense(1))
+
+        # オプティマイザ
+        if optimizer_type == 'sgd':
+            optimizer = SGD(lr=optimizer_lr, decay=1e-6, momentum=0.9, nesterov=True)
+        elif optimizer_type == 'adam':
+            optimizer = Adam(lr=optimizer_lr, beta_1=0.9, beta_2=0.999, decay=0.)
+        else:
+            raise NotImplementedError
+
+        # 目的関数、評価指標などの設定
+        self.model.compile(loss='mse',
+                           optimizer=optimizer, metrics=['mae', 'mse'])
+
+        # エポック数、アーリーストッピング
+        # あまりepochを大きくすると、小さい学習率のときに終わらないことがあるので注意
+        nb_epoch = 200
+        patience = 20
+        early_stopping = EarlyStopping(patience=patience, restore_best_weights=True)
+
+        # 学習の実行
+        history = self.model.fit(tr_x, tr_y,
+                                 epochs=nb_epoch,
+                                 batch_size=batch_size, verbose=1,
+                                 validation_data=(va_x, va_y),
+                                 callbacks=[early_stopping])
+
+        return history
+
+    def predict(self, x):
+        # 予測
+        x = self.scaler.transform(x)
+        y_pred = self.model.predict(x)
+        y_pred = y_pred.flatten()
+        return y_pred
 
 
+def plot_history(hist):
+    plt.figure()
+    plt.xlabel('Epoch')
+    plt.ylabel('Mean Square Error [Thousand Dollars$^2$]')
+    plt.plot(hist['epoch'], hist['mse'], label='Train Error')
+    plt.plot(hist['epoch'], hist['val_mse'], label = 'Val Error')
+    plt.legend()
+    plt.ylim([0,50])
