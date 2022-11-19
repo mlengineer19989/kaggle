@@ -27,6 +27,12 @@ from keras.models import Sequential
 from keras.optimizers import SGD, Adam
 from sklearn.preprocessing import StandardScaler
 
+def reset_data(data_dirname):
+    train = pd.read_csv(os.path.join(data_dirname, "train.csv"))
+    test_data = pd.read_csv(os.path.join(data_dirname, "test.csv"))
+    y_test = pd.read_csv(os.path.join(data_dirname, "sample_submission.csv"))["SalePrice"]
+    return train, test_data, y_test
+
 def preprocess_for_xgb(train, test):
     """以下のサイトで実装されている勾配ブースティング決定木用の前処理
     https://www.kaggle.com/code/anandhuh/house-price-prediction-simple-solution-top-3
