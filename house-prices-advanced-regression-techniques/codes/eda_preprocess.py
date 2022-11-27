@@ -88,13 +88,14 @@ def preprocess_for_xgb(train, test):
 
     return X_train, y_train, X_valid, y_valid, X_test
 
-def preprocess_selfmade(train, test_data, y_test):
+def preprocess_selfmade(train, test_data, y_test, validation=True):
     """ネットを参考に自分で実装した前処理の流れ
 
     Args:
         train (dataframe): train data involving both X and y.
         test_data (dataframe): test data involving only X.
         y_test (pd.series): test data involving only y.
+        validation (bool): train_test_split to obtain train data and validation data is done if this param is true.
 
     Returns:
         X_train : _description_
@@ -159,11 +160,11 @@ def preprocess_selfmade(train, test_data, y_test):
     X_total = pd.concat([X_train, X_test], axis=0)
 
     #クラスタリング結果を反映する
-    for l in selected_label:
-        if l not in X_total.columns:
-            print(l)
-            selected_label.remove(l)
-    X_total=X_total.loc[:,selected_label]
+    # for l in selected_label:
+    #     if l not in X_total.columns:
+    #         print(l)
+    #         selected_label.remove(l)
+    # X_total=X_total.loc[:,selected_label]
 
     #カテゴリ変数を変換
     X_total = pd.get_dummies(X_total)
@@ -171,10 +172,14 @@ def preprocess_selfmade(train, test_data, y_test):
     X_train = X_total[:train_size]
     X_test = X_total[train_size:train_size+test_size]
 
-    X_train, X_valid, y_train, y_valid = train_test_split(X_train, y_train,
-                                                                    train_size=0.8,
-                                                                    test_size=0.2,
-                                                                    random_state=0)
+    if validation:
+        X_train, X_valid, y_train, y_valid = train_test_split(X_train, y_train,
+                                                                        train_size=0.8,
+                                                                        test_size=0.2,
+                                                                        random_state=0)
+    else:
+        X_valid = None
+        y_valid = None
 
     return X_train, y_train, X_valid, y_valid, X_test, y_test
 
@@ -237,7 +242,7 @@ def missing_data_analysis(data):
         data (dataframe): _description_
 
     Returns:
-        dataframe: _description_
+        dataframe: _description
     """
     total = data.isnull().sum().sort_values(ascending=False)
     percent = (data.isnull().sum()/data.isnull().count()).sort_values(ascending=False)
@@ -246,7 +251,7 @@ def missing_data_analysis(data):
 
 
 def calc_score(y_true, y_pred):
-    MSE = mean_squared_error(y_true, y_pred)
+    MSE = mean_squared_error(y_true, y_pred, squared=False)
     r2 = r2_score(y_true, y_pred)
     return MSE, r2
 
@@ -277,8 +282,8 @@ class evaluation_show():
         MSE_train, r2_train = calc_score(self.y_train, self.y_pred_train)
         MSE_test, r2_test = calc_score(self.y_test, self.y_pred_test)
 
-        print("MSE_train={0}, r2_train={1}".format(MSE_train, r2_train))
-        print("MSE_test={0}, r2_test={1}".format(MSE_test, r2_test))
+        print("RMSE_train={0}, r2_train={1}".format(MSE_train, r2_train))
+        print("RMSE_test={0}, r2_test={1}".format(MSE_test, r2_test))
 
         lin_regplot(self.y_train, self.y_pred_train)
         plt.title("predict of train data")
