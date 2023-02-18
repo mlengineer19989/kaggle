@@ -33,7 +33,7 @@ def reset_data(data_dirname):
     y_test = pd.read_csv(os.path.join(data_dirname, "sample_submission.csv"))["SalePrice"]
     return train, test_data, y_test
 
-def preprocess_for_xgb(train, test):
+def preprocess_for_xgb(train, test, validation=True):
     """以下のサイトで実装されている勾配ブースティング決定木用の前処理
     https://www.kaggle.com/code/anandhuh/house-price-prediction-simple-solution-top-3
 
@@ -79,9 +79,20 @@ def preprocess_for_xgb(train, test):
     X_test = test[my_cols].copy()
 
     # One-hot encode the data
-    X_train = pd.get_dummies(X_train)
-    X_valid = pd.get_dummies(X_valid)
-    X_test = pd.get_dummies(X_test)
+    n_train = X_train.shape[0]
+    n_valid = X_valid.shape[0]
+    n_test = X_test.shape[0]
+
+    ret = pd.get_dummies(pd.concat([X_train, X_valid, X_test], axis=0))
+    ret = pd.get_dummies(ret)
+
+    X_train = ret.iloc[:n_train]
+    X_valid = ret.iloc[n_train: n_train + n_valid]
+    X_test = ret.iloc[n_train + n_valid:]
+
+    # X_train = pd.get_dummies(X_train)
+    # X_valid = pd.get_dummies(X_valid)
+    # X_test = pd.get_dummies(X_test)
 
     X_train, X_valid = X_train.align(X_valid, join='left', axis=1)
     X_train, X_test = X_train.align(X_test, join='left', axis=1)
