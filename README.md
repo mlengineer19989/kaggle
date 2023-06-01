@@ -1,4 +1,5 @@
 # kaggle
+仕事では使わない手法を試すためのリポジトリ。練習として、kaggleデータを扱う。
 
 
  # minicondaでのtensorflow環境構築
