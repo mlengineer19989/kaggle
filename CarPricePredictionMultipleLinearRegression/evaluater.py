@@ -69,7 +69,7 @@ class FeatureSelector():
         model.fit(self.X_train, self.y_train)
         return self.X_train.columns[np.argsort(abs(model.coef_))]
 
-    def select_feature(self):
+    def select_feature(self) -> tp.List[str]:
         selected_feature_label:tp.List[str] = []
         m_current:LNmodel = None
 
@@ -84,6 +84,7 @@ class FeatureSelector():
                 m_current = m_next
                 continue
 
+            #現モデルと次のモデルの比較をF値で行う。
             F:np.float64 = FeatureSelector.F(m_current=m_current, m_next=m_next)
             if F>2:
                 selected_feature_label.append(feature)
